@@ -1,22 +1,248 @@
-<html>
-  <body>
-    <!-- Add a placeholder for the Twitch embed -->
-    <div id="twitch-embed"></div>
+<!DOCTYPE html>
+<html ng-app="BingoApp">
+<head>
+<title>Pelaajat.com bingo</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" sizes="32x32" href="https://dp2nj6tr0x7gz.cloudfront.net/favicon.ico">
+<link rel="stylesheet" href="https://dp2nj6tr0x7gz.cloudfront.net/css/uikit.min.css" />
+<link rel="stylesheet" href="https://dp2nj6tr0x7gz.cloudfront.net/css/styles-2021.css" />
+<script src="https://dp2nj6tr0x7gz.cloudfront.net/js/uikit.min.js"></script>
+<script src="https://dp2nj6tr0x7gz.cloudfront.net/js/uikit-icons.min.js"></script>
+<script src="https://dp2nj6tr0x7gz.cloudfront.net/js/angular.min.js"></script>
+<script src="https://dp2nj6tr0x7gz.cloudfront.net/js/angular-cookies.min.js"></script>
+<script src="https://dp2nj6tr0x7gz.cloudfront.net/js/angular-locale_fi-fi.js"></script>
+<script src="https://dp2nj6tr0x7gz.cloudfront.net/js/app-v3.js"></script>
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Montserrat%3A300%2C400%2C500%2C600%2C700%2C800%7CSource%20Sans%20Pro%3A300%2C400%2C600%2C700%7CRoboto%20Condensed%3A300%2C400%2C700%7COpen%20Sans%3A300%2C400%2C700%7CLibre%20Franklin%3A300%2C300i%2C400%2C400i%2C600%2C600i%2C800%2C800i&amp;subset=latin%2Clatin-ext&amp;display=swap">
+</head>
+<body ng-controller="BingoController">
+<div class="uk-cover-container home_login_box" uk-height-viewport>
+<form data-ng-hide="logged_in">
+<fieldset class="uk-fieldset">
+<legend class="uk-legend uk-margin" style="font-weight: bold; font-size: 1.2rem;">
+<img src="https://pelaajat.com/wp-content/uploads/2018/11/pelaajat.png" style="width: 170px;"> BINGO
+<span data-ng-show="!loading && game.status == 'closed'" style="font-weight: lighter;">&mdash; arvonta loppunut</span>
+<span data-ng-show="!loading && game.status == 'open'" style="font-weight: lighter;">&mdash; osallistuminen avoinna, arvonta alkaa kohta</span>
+<span data-ng-show="!loading && game.status == 'playing'" style="font-weight: lighter;">&mdash; arvonta käynnissä, {{game.round}} bingoa</span>
+</legend>
+<div data-ng-hide="loading" class="uk-grid" data-ng-cloak>
+<div class="uk-card uk-card-secondary uk-card-body" style="background: rgba(255, 255, 255, 0.01); max-width: 55rem; margin: 0.5rem; padding-right: 5rem;">
+<div data-ng-show="game.status == 'open' && !game.ticket && player_id" style="color: white; min-width: 25rem;">
+<strong>Bingonimimerkki:</strong><br>
+<input type="text" class="uk-input" data-ng-model="game.nick" maxlength="40" style="max-width: 15rem;"> <button class="uk-button uk-button-primary" type="button" data-ng-disabled="!game.nick" data-ng-click="GetBingoTicket()">Osallistu!</button>
+</div>
+<div data-ng-show="game.status == 'open' && !player_id">
+<strong style="color: white;">Kirjaudu sisään osallistuaksesi</strong><br>
+<a class="uk-button uk-button-primary" target="_self" href="/">Kirjaudu</a>
+</div>
+<div data-ng-show="game.status != 'open' && !player_id">
+<strong style="color: white;">Olet vierailija-tilassa, kirjaudu sisään nähdäksesi kuponkisi</strong><br>
+<a class="uk-button uk-button-primary" target="_self" href="/">Kirjaudu</a>
+</div>
+<div data-ng-show="game.status != 'open' && !game.ticket && player_id">
+<strong style="color: white;">Parempaa onnea ensi kerralla, sillä tällä kertaa et ehtinyt mukaan arvontaan.</strong>
+</div>
+<div data-ng-show="game.ticket">
+<p style="color: white;">
+Hermeettinen bingokuponkisi, ole hyvä!
+</p>
+<table class="uk-table uk-table-divider" style="background: rgba(255, 255, 255, 0.99); color: black; text-align: center; margin: 2rem; max-width: 17rem; outline: 10px solid white; box-shadow: 2px 2px 30px #ccc;">
+<thead>
+<tr class="bingo_ticket_caption">
+<td>B</td>
+<td>I</td>
+<td>N</td>
+<td>G</td>
+<td>O</td>
+</tr>
+</thead>
+<tbody>
+<tr data-ng-repeat="row in game.ticket.rows">
+<td class="ticket_num" data-ng-class="{'number_hit': NumberMatches(row[0])}">{{row[0]}}<div data-ng-show="NumberMatches(row[0])" class="num_match"></div></td>
+<td class="ticket_num" data-ng-class="{'number_hit': NumberMatches(row[1])}">{{row[1]}}<div data-ng-show="NumberMatches(row[1])" class="num_match"></div></td>
+<td class="ticket_num" data-ng-class="{'number_hit': NumberMatches(row[2])}">{{row[2]}}<div data-ng-show="NumberMatches(row[2])" class="num_match"></div></td>
+<td class="ticket_num" data-ng-class="{'number_hit': NumberMatches(row[3])}">{{row[3]}}<div data-ng-show="NumberMatches(row[3])" class="num_match"></div></td>
+<td class="ticket_num" data-ng-class="{'number_hit': NumberMatches(row[4])}">{{row[4]}}<div data-ng-show="NumberMatches(row[4])" class="num_match"></div></td>
+</tr>
+</tbody>
+</table>
+<p>
+&mdash; Vain vaakabingot lasketaan<br>
+&mdash; Vain yksivoittaja per bingo
+</p>
+<strong data-ng-show="game.your_hits">Pisteitä: {{game.your_hits}}</strong>
+</div>
+</div>
+<div data-ng-show="game.status != 'open'" class="uk-card uk-card-secondary uk-card-body" style="background: rgba(255, 255, 255, 0.01); max-width: 55rem; margin: 0.5rem;">
+<div data-ng-show="game.top_hits.length > 0" style="float: right; text-align: right;" id="score_board">
+<strong style="color: white;">Pisteet TOP 5: </strong>
+<table>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">{{game.top_hits[0].hits || 0}} &mdash; </td>
+<td>{{game.top_hits[0].nick || ''}}</td>
+</tr>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">{{game.top_hits[1].hits || 0}} &mdash; </td>
+<td>{{game.top_hits[1].nick || ''}}</td>
+</tr>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">{{game.top_hits[2].hits || 0}} &mdash; </td>
+<td>{{game.top_hits[2].nick || ''}}</td>
+</tr>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">{{game.top_hits[3].hits || 0}} &mdash; </td>
+<td>{{game.top_hits[3].nick || ''}}</td>
+</tr>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">{{game.top_hits[4].hits || 0}} &mdash; </td>
+<td>{{game.top_hits[4].nick || ''}}</td>
+</tr>
+</table>
+</div>
+<div data-ng-show="game.winners && game.winners.round_1">
+<strong style="color: white;">Voittajat: </strong>
+<table>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">1 bingo<span style="opacity: 0;">a</span> &mdash; </td>
+<td>{{game.winners.round_1 || '(ei vielä voittajaa)'}}</td>
+</tr>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">2 bingoa &mdash; </td>
+<td>{{game.winners.round_2 || '(ei vielä voittajaa)'}}</td>
+</tr>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">3 bingoa &mdash; </td>
+<td>{{game.winners.round_3 || '(ei vielä voittajaa)'}}</td>
+</tr>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">4 bingoa &mdash; </td>
+<td>{{game.winners.round_4 || '(ei vielä voittajaa)'}}</td>
+</tr>
+<tr>
+<td style="font-weight: bold; color: white; text-align: right; width: 7rem;">5 bingoa &mdash; </td>
+<td>{{game.winners.round_5 || '(ei vielä voittajaa)'}}</td>
+</tr>
+</table>
+</div>
+<div data-ng-show="game.winner_info_sent">
+<strong style="color: white;">Kiitos, tietosi on lähetetty. Onneksi olkoon!</strong>
+</div>
+<div data-ng-show="!game.winner_info_sent && game.is_winner">
+<div uk-alert style="background: radial-gradient(#444, transparent); border-radius: 2rem;">
+<strong style="color: white;">Onneksi olkoon! Olet voittaja, lähetäthän meille yhteystietosi upeiden palkintojen lunastamiseksi.</strong><br>
+<div style="text-align: center;" class="uk-margin">
+<button class="uk-button uk-button-primary" type="button" uk-toggle="target: #send_winner_info">Lähetä tietosi</button>
+</div>
+</div>
+<div id="send_winner_info" uk-modal>
+<div class="uk-modal-dialog uk-modal-body">
+<h2 class="uk-modal-title">Nimi</h2>
+<input type="text" class="uk-input" data-ng-model="game.winner_info_name">
+<h2 class="uk-modal-title">Sähköposti</h2>
+<input type="email" class="uk-input" data-ng-model="game.winner_info_email">
+<h2 class="uk-modal-title">Postisoite</h2>
+<textarea class="uk-textarea" data-ng-model="game.winner_info_address" rows="4" cols="60"></textarea>
+<h2 class="uk-modal-title">Postinumero ja -toimipaikka</h2>
+<input type="text" class="uk-input" data-ng-model="game.winner_info_zip_city">
+<h2 class="uk-modal-title">Puhelin</h2>
+<input type="text" class="uk-input" data-ng-model="game.winner_info_phone">
+<p class="uk-text-right">
+<button class="uk-button uk-button-default uk-modal-close" type="button">Peruuta</button>
+<button class="uk-button uk-button-primary uk-modal-close" type="button" data-ng-click="SendWinnerInfo()">Lähetä</button>
+</p>
+</div>
+</div>
+</div>
+<div data-ng-show="game.display_numbers && game.display_numbers.length > 0" style="margin-top: 0.5rem;">
+<strong style="color: white;">Arvotut numerot: </strong><br>
 
-    <!-- Load the Twitch embed JavaScript file -->
-    <script src="https://embed.twitch.tv/embed/v1.js"></script>
 
-    <!-- Create a Twitch.Embed object that will render within the "twitch-embed" element -->
-    <script type="text/javascript">
-      new Twitch.Embed("twitch-embed", {
-        width: 854,
-        height: 480,
-        channel: "kirdez",
-        // Only needed if this page is going to be embedded on other websites
-        parent: ["embed.example.com", "othersite.example.com"]
-      });
-    </script>
-    <div class="container"><main><h1 class="title">Bogo Man Productions</h1><p 
-  </body>
+<div class="ball_container_v2" data-ng-repeat="bingo_number in game.display_numbers">
+<figure class="bingo_ball_v2">
+<span class="ball_shadow_v2"></span>
+<span class="ball_number_v2" data-value="{{bingo_number}}"></span>
+</figure>
+</div>
+</div>
+</div>
+<br>
+</div>
+</fieldset>
+</form>
+<audio id="bingo_1">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/1.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_2">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/2.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_3">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/3.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_4">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/4.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_5">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/5.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_6">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/6.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_7">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/7.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_8">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/8.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_9">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/9.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_10">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/10.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_11">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/11.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_12">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/12.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_13">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/13.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_14">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/14.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_15">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/15.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_16">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/16.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_17">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/17.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_18">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/18.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_19">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/19.mpeg" type="audio/mpeg">
+</audio>
+<audio id="bingo_20">
+<source src="https://dp2nj6tr0x7gz.cloudfront.net/sounds/20.mpeg" type="audio/mpeg">
+</audio>
+<div data-ng-show="loading" data-ng-cloak>
+Latailee..
+</div>
+</div>
+<style type="text/css" media="screen">
+    @media only screen and (max-width: 600px) {
+        div.uk-card.uk-card-secondary.uk-card-body {
+            max-width: 22rem !important;
+        }
+        #score_board {
+            float: none !important;
+            text-align: left !important;
+        }
+    }
+</style>
+</body>
 </html>
-
